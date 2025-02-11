@@ -1,0 +1,27 @@
+[tools]
+go = "1.23.6"
+golangci-lint = "1.63.4"
+
+[tasks.build]
+description = "Build the Go application"
+run = "go build -o bin/envy ./"
+
+[tasks.run]
+description = "Run the application"
+run = "go run main.go"
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "rm -rf bin"
+
+[tasks.test]
+description = "Run Go tests"
+run = "go test ./..."
+
+[tasks.fmt]
+description = "Format Go code"
+run = "go fmt ./..."
+
+[tasks.lint]
+description = "Run linter" # requires golangci-lint
+run = "golangci-lint run"
