@@ -24,35 +24,98 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+const (
+	flagAll      = "all"
+	flagLoaded   = "loaded"
+	flagUnloaded = "unloaded"
 )
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Lists envy profiles",
+	Long:  `Lists envy profiles that are currently loaded, or unloaded, or available to be loaded`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("list called")
+		err := doList(cmd)
+		cobra.CheckErr(err)
 	},
+	Args: cobra.NoArgs,
+}
+
+func doList(cmd *cobra.Command) error {
+	verbose, err := cmd.Flags().GetBool(verboseFlag)
+	if err != nil {
+		return err
+	}
+
+	dir := viper.GetString(cfgProfileDir)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return fmt.Errorf("profile directory does not exist: %s", dir)
+	}
+
+	if b, err := cmd.Flags().GetBool(flagLoaded); err != nil {
+		cobra.CheckErr(err)
+	} else if b {
+		return listLoaded(dir, verbose)
+	}
+
+	if b, err := cmd.Flags().GetBool(flagUnloaded); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	} else if b {
+		return listUnloaded(dir, verbose)
+	}
+
+	// list all by default
+	return listAll(dir, verbose)
+}
+
+func listAll(dir string, verbose bool) error {
+	if verbose {
+		fmt.Fprintln(os.Stderr, "Listing profiles in ", dir)
+	}
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("error reading profile directory: %w", err)
+	}
+
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".yaml") {
+			envName := strings.TrimSuffix(file.Name(), ".yaml")
+			fmt.Println(envName)
+		}
+	}
+
+	return nil
+}
+
+func listLoaded(dir string, verbose bool) error {
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Listing loaded profiles (dir: %s)\n", dir)
+	}
+	return fmt.Errorf("not implemented")
+}
+
+func listUnloaded(dir string, verbose bool) error {
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Listing unloaded profiles (dir: %s)\n", dir)
+	}
+	return fmt.Errorf("not implemented")
 }
 
 func init() {
 	rootCmd.AddCommand(listCmd)
 
-	// Here you will define your flags and configuration settings.
+	listCmd.Flags().BoolP(flagAll, "a", false, "List all available profiles")
+	listCmd.Flags().BoolP(flagLoaded, "l", false, "List all loaded profiles")
+	listCmd.Flags().BoolP(flagUnloaded, "u", false, "List all profiles that are not loaded")
+	listCmd.MarkFlagsMutuallyExclusive(flagAll, flagLoaded, flagUnloaded)
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

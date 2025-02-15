@@ -1,0 +1,18 @@
+variables:
+  FOO_HOME: "/opt/foo"
+
+path:
+  - "$FOO_HOME/bin"
+
+aliases:
+  foo: "$FOO_HOME/bin/foo"
+
+functions:
+  foo_do: |
+    echo "Doing foo..."
+
+postload: |
+  echo 'Loaded Foo environment'
+
+postunload: |
+  echo 'Unloaded Foo environment'

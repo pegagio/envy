@@ -24,35 +24,94 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-// loadCmd represents the load command
 var loadCmd = &cobra.Command{
 	Use:   "load",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Load an environment profile",
+	Long:  `Specify a profile and load it into the environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("load called")
+		doLoad(args[0], func(profile Profile) string {
+			return profile.GenerateLoadScript()
+		})
 	},
+	Args: cobra.ExactArgs(1),
+}
+
+var unloadCmd = &cobra.Command{
+	Use:   "unload",
+	Short: "Unload an environment profile",
+	Long:  `Removes a profile from the environment.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		doLoad(args[0], func(profile Profile) string {
+			return profile.GenerateUnloadScript()
+		})
+	},
+	Args: cobra.ExactArgs(1),
 }
 
 func init() {
 	rootCmd.AddCommand(loadCmd)
+	rootCmd.AddCommand(unloadCmd)
+}
 
-	// Here you will define your flags and configuration settings.
+func doLoad(name string, scriptf func(Profile) string) {
+	verbose, err := rootCmd.Flags().GetBool(verboseFlag)
+	cobra.CheckErr(err)
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// loadCmd.PersistentFlags().String("foo", "", "A help for foo")
+	profile, err := readProfile(name, verbose)
+	cobra.CheckErr(err)
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// loadCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// Generate script
+	script := scriptf(profile)
+
+	// Write the script to a temporary file
+	filename, err := writeScriptFile(verbose, script)
+	cobra.CheckErr(err)
+
+	fmt.Println(filename)
+}
+
+func readProfile(name string, verbose bool) (Profile, error) {
+	// Locate the profile file
+	dir := viper.GetString(cfgProfileDir)
+	profilePath := fmt.Sprintf("%s/%s.yaml", dir, name)
+	if _, err := os.Stat(profilePath); os.IsNotExist(err) {
+		return Profile{}, fmt.Errorf("profile %s does not exist", name)
+	}
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Reading profile from %s\n", profilePath)
+	}
+
+	// Read in the profile file
+	if profile, err := ReadProfile(profilePath); err != nil {
+		return Profile{}, fmt.Errorf("failed to read profile from %s: %w", profilePath, err)
+	} else {
+		return profile, nil
+	}
+}
+
+func writeScriptFile(verbose bool, script string) (string, error) {
+	tempFile, err := os.CreateTemp("", "envy_*")
+	if err != nil {
+		return "", fmt.Errorf("error creating temp file: %w", err)
+	}
+	defer func(tempFile *os.File) {
+		if err := tempFile.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "error closing temp file '%s'", tempFile.Name())
+		}
+	}(tempFile)
+
+	if verbose {
+		fmt.Fprintln(os.Stderr, "Temp file created:", tempFile.Name())
+	}
+	if _, err := tempFile.WriteString(script); err != nil {
+		return "", fmt.Errorf("error writing to temp file '%s': %w", tempFile.Name(), err)
+	}
+
+	return tempFile.Name(), nil
 }
