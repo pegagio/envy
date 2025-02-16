@@ -50,19 +50,16 @@ envy() {
     shift
 
     envy_debug "ENVY_PROFILES (pre): $ENVY_PROFILES"
-    local loaded_profiles="${ENVY_PROFILES:-}"
+    export ENVY_PROFILES=$ENVY_PROFILES
 
     # Fetch the current list of loaded environments from the tracked variable
-    local cmd_str
-    if [[ -n "$loaded_profiles" ]]; then
-      cmd_str="envy-go -p $loaded_profiles"
-    else
-      cmd_str="envy-go"
-    fi
+#    if [[ -n "$loaded_profiles" ]]; then
+#    else
+#    fi
 
     # Call the Go binary and capture its output
     args=("$@")
-    cmd_str="$cmd_str $cmd ${args[*]}"
+    cmd_str="envy-go $cmd ${args[*]}"
     envy_debug "Executing: $cmd_str" >&2
     output=$(eval "$cmd_str") || return $?
 

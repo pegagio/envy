@@ -25,6 +25,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -81,19 +82,13 @@ func listAll(dir string, verbose bool) error {
 		fmt.Fprintln(os.Stderr, "Listing profiles in ", dir)
 	}
 
-	files, err := os.ReadDir(dir)
+	profiles, err := getAllProfiles(dir, verbose)
 	if err != nil {
-		return fmt.Errorf("error reading profile directory: %w", err)
+		return err
 	}
 
-	for _, file := range files {
-		if verbose {
-			fmt.Fprintln(os.Stderr, "Evaluating file: ", file.Name())
-		}
-		if strings.HasSuffix(file.Name(), ".yaml") {
-			profileName := strings.TrimSuffix(file.Name(), ".yaml")
-			fmt.Println(profileName)
-		}
+	for _, profile := range profiles {
+		fmt.Println(profile)
 	}
 
 	return nil
@@ -103,14 +98,49 @@ func listLoaded(dir string, verbose bool) error {
 	if verbose {
 		fmt.Fprintf(os.Stderr, "Listing loaded profiles (dir: %s)\n", dir)
 	}
-	return fmt.Errorf("not implemented")
+	for _, profile := range activeProfiles() {
+		fmt.Println(profile)
+	}
+	return nil
 }
 
 func listUnloaded(dir string, verbose bool) error {
 	if verbose {
 		fmt.Fprintf(os.Stderr, "Listing unloaded profiles (dir: %s)\n", dir)
 	}
-	return fmt.Errorf("not implemented")
+
+	allProfiles, err := getAllProfiles(dir, verbose)
+	if err != nil {
+		return err
+	}
+
+	loadedProfiles := activeProfiles()
+	for _, profile := range allProfiles {
+		if !slices.Contains(loadedProfiles, profile) {
+			fmt.Println(profile)
+		}
+	}
+
+	return nil
+}
+
+func getAllProfiles(dir string, verbose bool) ([]string, error) {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("error reading profile directory: %w", err)
+	}
+
+	var profiles []string
+	for _, file := range files {
+		if verbose {
+			fmt.Fprintln(os.Stderr, "Evaluating file: ", file.Name())
+		}
+		if strings.HasSuffix(file.Name(), ".yaml") {
+			profileName := strings.TrimSuffix(file.Name(), ".yaml")
+			profiles = append(profiles, profileName)
+		}
+	}
+	return profiles, nil
 }
 
 func init() {
