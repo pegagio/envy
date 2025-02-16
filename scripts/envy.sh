@@ -49,8 +49,8 @@ envy() {
     local cmd="$1"
     shift
 
-    envy_debug "ENVYLOADED (pre): $ENVYLOADED"
-    local loaded_profiles="${ENVYLOADED:-}"
+    envy_debug "ENVY_PROFILES (pre): $ENVY_PROFILES"
+    local loaded_profiles="${ENVY_PROFILES:-}"
 
     # Fetch the current list of loaded environments from the tracked variable
     local cmd_str
@@ -66,17 +66,17 @@ envy() {
     envy_debug "Executing: $cmd_str" >&2
     output=$(eval "$cmd_str") || return $?
 
-    # If the command is `load`, update ENVYLOADED and apply environment changes
+    # If the command is `load`, update ENVY_PROFILES and apply environment changes
     if [[ "$cmd" == "load" ]]; then
         local profile="$1"
 
         # Create or append to the list of loaded profiles
-        if [[ -z "$ENVYLOADED" ]]; then
-          envy_debug "Creating ENVYLOADED from $profile"
-          ENVYLOADED="$profile"
+        if [[ -z "$ENVY_PROFILES" ]]; then
+          envy_debug "Creating ENVY_PROFILES from $profile"
+          ENVY_PROFILES="$profile"
         else
-          envy_debug "Appending profile $profile to ENVYLOADED"
-          ENVYLOADED+=",${profile}"
+          envy_debug "Appending profile $profile to ENVY_PROFILES"
+          ENVY_PROFILES+=",${profile}"
         fi
 
         # Evaluate the output to set environment variables, aliases, etc.
@@ -84,7 +84,7 @@ envy() {
         # shellcheck disable=SC1090
         source "$output"
 
-    # If the command is `unload`, update ENVYLOADED and revert environment changes
+    # If the command is `unload`, update ENVY_PROFILES and revert environment changes
     elif [[ "$cmd" == "unload" ]]; then
         local profile="$1"
         if [[ -z "$profile" ]]; then
@@ -92,9 +92,9 @@ envy() {
             return 1
         fi
 
-        # Remove the profile from ENVYLOADED
-        envy_debug "Removing profile $profile from ENVYLOADED"
-        ENVYLOADED=$(echo "$ENVYLOADED" | awk -v profile="$profile" -F, '
+        # Remove the profile from ENVY_PROFILES
+        envy_debug "Removing profile $profile from ENVY_PROFILES"
+        ENVY_PROFILES=$(echo "$ENVY_PROFILES" | awk -v profile="$profile" -F, '
         {
             first=1;
             for (i=1; i<=NF; i++) {
@@ -119,7 +119,7 @@ envy() {
       envy_debug "<<< Command Output <<<"
     fi
 
-    envy_debug "ENVYLOADED (post): $ENVYLOADED"
+    envy_debug "ENVY_PROFILES (post): $ENVY_PROFILES"
 }
 
 envy_debug() {

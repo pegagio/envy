@@ -132,3 +132,11 @@ func removeFromPath(path, profilePath string) string {
 
 	return newPath
 }
+
+func activeProfiles() []string {
+	profilesEnv := os.Getenv("ENVY_PROFILES")
+	if profilesEnv == "" {
+		return []string{}
+	}
+	return strings.Split(profilesEnv, ",")
+}
