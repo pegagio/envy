@@ -34,6 +34,7 @@ import (
 const (
 	cfgProfileDir = "ProfilesLocation"
 	configFlag    = "config"
+	profilesFlag  = "profiles"
 	verboseFlag   = "verbose"
 )
 
@@ -65,6 +66,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, configFlag, "", "config file (default is $HOME/.envy/config.yaml)")
 	rootCmd.PersistentFlags().BoolP(verboseFlag, "v", false, "verbose output")
+	rootCmd.PersistentFlags().StringP(profilesFlag, "p", "", "Typically populated with the ENVYLOADED environment variable")
 }
 
 // initConfig reads in config file and ENV variables if set.

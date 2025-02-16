@@ -49,34 +49,40 @@ envy() {
     local cmd="$1"
     shift
 
-    # Fetch the current list of loaded environments from the tracked variable
+    envy_debug "ENVYLOADED (pre): $ENVYLOADED"
     local loaded_profiles="${ENVYLOADED:-}"
 
-    # Call the Go binary and capture its output
-    local output
+    # Fetch the current list of loaded environments from the tracked variable
+    local cmd_str
     if [[ -n "$loaded_profiles" ]]; then
-        output=$(bin/envy "$cmd" "$@" --loaded "$loaded_profiles")
+      cmd_str="envy-go -p $loaded_profiles"
     else
-        output=$(bin/envy "$cmd" "$@")
+      cmd_str="envy-go"
     fi
+
+    # Call the Go binary and capture its output
+    args=("$@")
+    cmd_str="$cmd_str $cmd ${args[*]}"
+    envy_debug "Executing: $cmd_str" >&2
+    output=$(eval "$cmd_str") || return $?
 
     # If the command is `load`, update ENVYLOADED and apply environment changes
     if [[ "$cmd" == "load" ]]; then
         local profile="$1"
-        if [[ -z "$profile" ]]; then
-            echo "Usage: envy load <profile>"
-            return 1
-        fi
 
-        # Append to the list of loaded profiles
+        # Create or append to the list of loaded profiles
         if [[ -z "$ENVYLOADED" ]]; then
-            ENVYLOADED="$profile"
+          envy_debug "Creating ENVYLOADED from $profile"
+          ENVYLOADED="$profile"
         else
-            ENVYLOADED+=",${profile}"
+          envy_debug "Appending profile $profile to ENVYLOADED"
+          ENVYLOADED+=",${profile}"
         fi
 
         # Evaluate the output to set environment variables, aliases, etc.
-        eval "$output"
+        envy_debug "Sourcing $output"
+        # shellcheck disable=SC1090
+        source "$output"
 
     # If the command is `unload`, update ENVYLOADED and revert environment changes
     elif [[ "$cmd" == "unload" ]]; then
@@ -87,19 +93,38 @@ envy() {
         fi
 
         # Remove the profile from ENVYLOADED
-        ENVYLOADED=$(echo "$ENVYLOADED" | awk -v RS=, -v ORS=, '$0 != "'"$profile"'"' | sed 's/,$//')
+        envy_debug "Removing profile $profile from ENVYLOADED"
+        ENVYLOADED=$(echo "$ENVYLOADED" | awk -v profile="$profile" -F, '
+        {
+            first=1;
+            for (i=1; i<=NF; i++) {
+                if ($i != profile) {
+                    if (!first) printf ",";
+                    printf "%s", $i;
+                    first=0;
+                }
+            }
+            print "";
+        }')
 
         # Evaluate the output to unset environment variables, aliases, etc.
-        eval "$output"
+        envy_debug "Sourcing $output"
+        # shellcheck disable=SC1090
+        source "$output"
 
-    # If the command is `list`, just pass it through to `envy`
-    elif [[ "$cmd" == "list" ]]; then
-        echo "$output"
-
-    # Unknown command
+    # Just pass it through to `envy`
     else
-        echo "Unknown command: $cmd"
-        echo "Usage: envy <load|unload|list> [profile] [options]"
-        return 1
+      envy_debug ">>> Command Output >>>"
+      echo "$output"
+      envy_debug "<<< Command Output <<<"
+    fi
+
+    envy_debug "ENVYLOADED (post): $ENVYLOADED"
+}
+
+envy_debug() {
+    if [[ -n "$ENVYDEBUG" && "$ENVYDEBUG" =~ ^(1|true|yes|on)$ ]]; then
+        echo "[DEBUG] $*" >&2
     fi
 }
+

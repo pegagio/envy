@@ -93,16 +93,19 @@ func (p *Profile) GenerateUnloadScript() string {
 		script = append(script, fmt.Sprintf("unset %s", key))
 	}
 
+	pathEnv := os.Getenv("PATH")
 	for _, path := range p.Path {
-		script = append(script, fmt.Sprintf("export PATH=$(echo \"$PATH\" | sed -E 's;%s:;;g')", path))
+		resolved := os.ExpandEnv(path)
+		pathEnv = removeFromPath(pathEnv, resolved)
 	}
+	script = append(script, fmt.Sprintf("export PATH=%s", pathEnv))
 
 	for functionName := range p.Functions {
 		script = append(script, fmt.Sprintf("unset -f %s", functionName))
 	}
 
 	for aliasName := range p.Aliases {
-		script = append(script, fmt.Sprintf("unalias %s", aliasName))
+		script = append(script, fmt.Sprintf("unalias %s 2>/dev/null || true", aliasName))
 	}
 
 	if p.PostUnload != "" {
@@ -110,4 +113,22 @@ func (p *Profile) GenerateUnloadScript() string {
 	}
 
 	return strings.Join(script, "\n")
+}
+
+func removeFromPath(path, profilePath string) string {
+	// Split PATH into slices based on ":"
+	pathSegments := strings.Split(path, ":")
+
+	// Filter out segments that match profilePath
+	var newPathSegments []string
+	for _, segment := range pathSegments {
+		if segment != profilePath {
+			newPathSegments = append(newPathSegments, segment)
+		}
+	}
+
+	// Join filtered segments back into a PATH string
+	newPath := strings.Join(newPathSegments, ":")
+
+	return newPath
 }

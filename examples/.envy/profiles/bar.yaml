@@ -1,0 +1,18 @@
+variables:
+  BAR_HOME: "/opt/bar"
+
+path:
+  - "$BAR_HOME/bin"
+
+aliases:
+  bar: "$BAR_HOME/bin/bar"
+
+functions:
+  bar_do: |
+    echo "Doing bar..."
+
+postload: |
+  echo 'Loaded bar environment'
+
+postunload: |
+  echo 'Unloaded bar environment'

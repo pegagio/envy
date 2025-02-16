@@ -87,9 +87,12 @@ func listAll(dir string, verbose bool) error {
 	}
 
 	for _, file := range files {
+		if verbose {
+			fmt.Fprintln(os.Stderr, "Evaluating file: ", file.Name())
+		}
 		if strings.HasSuffix(file.Name(), ".yaml") {
-			envName := strings.TrimSuffix(file.Name(), ".yaml")
-			fmt.Println(envName)
+			profileName := strings.TrimSuffix(file.Name(), ".yaml")
+			fmt.Println(profileName)
 		}
 	}
 

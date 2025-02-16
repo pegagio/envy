@@ -4,7 +4,7 @@ golangci-lint = "1.63.4"
 
 [tasks.build]
 description = "Build the Go application"
-run = "go build -o bin/envy ./"
+run = "go build -o bin/envy-go ./"
 
 [tasks.run]
 description = "Run the application"
